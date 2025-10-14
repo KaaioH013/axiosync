@@ -12,8 +12,8 @@ export async function POST(request: Request) {
       return new Response(JSON.stringify({ error: 'Mensagem e tom de voz são obrigatórios' }), { status: 400 });
     }
 
-    // Pega o modelo "gemini-pro", que é super rápido e eficiente
-    const model = genAI.getGenerativeModel({ model: "gemini-1.0-pro" });
+    // Pega o modelo "gemini-2.5-flash", que é super rápido e eficiente
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
     const systemPrompt = `Você é um assistente de atendimento via WhatsApp. Seu tom de voz deve ser: "${tone}". Responda de forma concisa e direta, como em um chat.`;
 
