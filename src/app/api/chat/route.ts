@@ -13,7 +13,7 @@ export async function POST(request: Request) {
     }
 
     // Pega o modelo "gemini-pro", que é super rápido e eficiente
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro-latest" });
+    const model = genAI.getGenerativeModel({ model: "gemini-pro" });
 
     const systemPrompt = `Você é um assistente de atendimento via WhatsApp. Seu tom de voz deve ser: "${tone}". Responda de forma concisa e direta, como em um chat.`;
 
