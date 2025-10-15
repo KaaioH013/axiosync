@@ -1,6 +1,6 @@
-// INÍCIO DO CÓDIGO ATUALIZADO v5.0 (IA com Base de Conhecimento)
+// INÍCIO DO CÓDIGO ATUALIZADO v5.1 (Correção do SystemInstruction)
 
-import { GoogleGenerativeAI, SystemInstruction } from "@google/generative-ai";
+import { GoogleGenerativeAI } from "@google/generative-ai"; // Removida a importação de 'SystemInstruction'
 import { createClient } from '@supabase/supabase-js';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
@@ -19,21 +19,20 @@ export async function POST(request: Request) {
     }
 
     // --- ETAPA 1: BUSCAR A BASE DE CONHECIMENTO ---
-    const { data: knowledgeData, error: knowledgeError } = await supabaseAdmin
+    const { data: knowledgeData } = await supabaseAdmin
       .from('knowledge_base')
       .select('content')
       .eq('user_id', userId)
       .single();
 
     let knowledgeBaseContent = "Nenhuma informação adicional foi fornecida.";
-    if (knowledgeData) {
+    if (knowledgeData && knowledgeData.content) {
       knowledgeBaseContent = knowledgeData.content;
     }
 
     // --- ETAPA 2: CONSTRUIR O "SUPER PROMPT" ---
-    const systemInstruction: SystemInstruction = {
-      role: "system",
-      parts: [{ text: `
+    // A instrução de sistema agora é um objeto simples, sem o tipo 'SystemInstruction'
+    const systemInstruction = `
         Você é um assistente de atendimento especialista. Seu tom de voz deve ser: "${tone}".
         Use a seguinte BASE DE CONHECIMENTO para responder às perguntas do usuário. Seja fiel a esta informação.
         
@@ -41,16 +40,18 @@ export async function POST(request: Request) {
         ---
         ${knowledgeBaseContent}
         ---
-      `}],
-    };
+      `;
     
-    // Salva a mensagem do usuário no banco de dados ANTES de chamar a IA
     await supabaseAdmin.from('messages').insert({ user_id: userId, content: message, role: 'user' });
 
     // --- ETAPA 3: CHAMAR A IA COM O NOVO CONTEXTO ---
+    // A CORREÇÃO ESTÁ AQUI: Passamos a instrução de sistema diretamente na configuração do modelo
     const model = genAI.getGenerativeModel({ 
       model: "gemini-2.5-flash",
-      systemInstruction: systemInstruction, // Injeta a Base de Conhecimento no cérebro da IA
+      systemInstruction: {
+        role: "system",
+        parts: [{ text: systemInstruction }],
+      }
     });
 
     const formattedHistory = history.map((msg: { role: string, content: string }) => ({
@@ -70,7 +71,6 @@ export async function POST(request: Request) {
     const response = await result.response;
     const reply = response.text();
 
-    // Salva a resposta da IA no banco de dados
     await supabaseAdmin.from('messages').insert({ user_id: userId, content: reply, role: 'assistant' });
 
     return new Response(JSON.stringify({ reply }), { status: 200 });
@@ -81,4 +81,4 @@ export async function POST(request: Request) {
   }
 }
 
-// FINAL DO CÓDIGO ATUALIZADO v5.0 (IA com Base de Conhecimento)
+// FINAL DO CÓDIGO ATUALIZADO v5.1 (Correção do SystemInstruction)
