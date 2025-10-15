@@ -24,7 +24,7 @@ export async function POST(request: Request) {
 
     await supabaseAdmin.from('messages').insert({ user_id: userId, content: message, role: 'user' });
 
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" }); // Corrigido para o modelo que você descobriu
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" }); // Corrigido para o modelo que você descobriu
     
     const systemPrompt = `Você é um assistente de atendimento via WhatsApp. Seu tom de voz deve ser: "${tone}". Responda de forma concisa e direta, como em um chat.`;
 
