@@ -177,7 +177,7 @@ export default function DashboardPage() {
                 <input
                   type="text"
                   value={newMessage}
-                  onChange={(e) => setNewMessage(e.g.value)}
+                  onChange={(e) => setNewMessage(e.target.value)}
                   placeholder="Simule uma mensagem do cliente..."
                   className="flex-grow px-4 py-2 bg-gray-700 text-white border border-gray-600 rounded-l-lg focus:outline-none focus:ring-2 focus:ring-brand-blue disabled:bg-gray-600"
                   disabled={isSending}
