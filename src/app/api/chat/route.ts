@@ -25,7 +25,7 @@ export async function POST(request: Request) {
       role: 'user',
     });
 
-    const model = genAI.getGenerativeModel({ model: "gemini-1.0-pro" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
     const systemPrompt = `Você é um assistente de atendimento via WhatsApp. Seu tom de voz deve ser: "${tone}". Responda de forma concisa e direta, como em um chat.`;
 
     // NOVIDADE: Formata o histórico para o formato que o Gemini entende
