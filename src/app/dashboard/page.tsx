@@ -1,4 +1,4 @@
-// INÍCIO DO CÓDIGO ATUALIZADO v4.1 (A Versão Final, Completa e Correta)
+// INÍCIO DO CÓDIGO ATUALIZADO v4.2 (Correção Final do TypeScript)
 
 "use client";
 
@@ -21,7 +21,6 @@ export default function DashboardPage() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [subscription, setSubscription] = useState<Subscription | null>(null);
-
   const [tone, setTone] = useState('vendedor simpático e prestativo');
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
@@ -52,13 +51,10 @@ export default function DashboardPage() {
         const subscriptionPromise = supabase.from('subscriptions').select('status').eq('user_id', user.id).single();
         const messagesPromise = supabase.from('messages').select('*').eq('user_id', user.id).order('created_at', { ascending: true });
         const knowledgePromise = supabase.from('knowledge_base').select('content').eq('user_id', user.id).single();
-
         const [subscriptionResult, messagesResult, knowledgeResult] = await Promise.all([subscriptionPromise, messagesPromise, knowledgePromise]);
-
         if (subscriptionResult.data) setSubscription(subscriptionResult.data);
         if (messagesResult.data) setMessages(messagesResult.data);
         if (knowledgeResult.data) setKnowledge(knowledgeResult.data.content);
-
         setLoading(false);
       }
       fetchData();
@@ -103,12 +99,14 @@ export default function DashboardPage() {
         const { data } = await supabase.from('messages').select('*').eq('user_id', user.id).order('created_at', { ascending: true });
         if (data) setMessages(data);
       } else {
-        const errorMessage = { id: Date.now().toString() + 'e', content: "Desculpe, a IA não conseguiu responder.", role: 'assistant' };
+        // A PRIMEIRA CORREÇÃO ESTÁ AQUI
+        const errorMessage: Message = { id: Date.now().toString() + 'e', content: "Desculpe, a IA não conseguiu responder.", role: 'assistant' };
         setMessages(prev => [...prev, errorMessage]);
       }
     } catch (error) {
       console.error("Erro:", error);
-      const errorMessage = { id: Date.now().toString() + 'e', content: "Desculpe, não consegui me conectar.", role: 'assistant' };
+      // A SEGUNDA CORREÇÃO ESTÁ AQUI
+      const errorMessage: Message = { id: Date.now().toString() + 'e', content: "Desculpe, não consegui me conectar. Tente novamente.", role: 'assistant' };
       setMessages(prev => [...prev, errorMessage]);
     } finally {
       setIsSending(false);
@@ -131,7 +129,6 @@ export default function DashboardPage() {
             <button onClick={handleLogout} className="text-red-500 hover:underline font-semibold">Sair</button>
           </div>
         </header>
-
         <main>
           {subscription && subscription.status === 'active' ? (
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -170,7 +167,6 @@ export default function DashboardPage() {
                 <div className="bg-gray-900/50 p-6 rounded-lg border border-gray-800">
                   <h2 className="text-xl font-semibold mb-4">Seu Plano</h2>
                   <p className="text-lg font-medium text-brand-green">Plano Ativo</p>
-                  {/* No futuro, mostraremos o nome do plano aqui */}
                 </div>
               </div>
               <div className="lg:col-span-2 bg-gray-900/50 p-6 rounded-lg border border-gray-800">
@@ -208,7 +204,7 @@ export default function DashboardPage() {
               </div>
             </div>
           ) : (
-            <DashboardPlans user={user!} />
+            user && <DashboardPlans user={user} />
           )}
         </main>
       </div>
@@ -216,4 +212,4 @@ export default function DashboardPage() {
   );
 }
 
-// FINAL DO CÓDIGO ATUALIZADO v4.1 (A Versão Final, Completa e Correta)
+// FINAL DO CÓDIGO ATUALIZADO v4.2 (Correção Final do TypeScript)
