@@ -1,12 +1,11 @@
-// INÍCIO DO CÓDIGO ATUALIZADO v2.0
+// INÍCIO DO CÓDIGO ATUALIZADO v3.1 (Final)
 
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react'; // Adiciona o useRef
 import { supabase } from '@/lib/supabase';
 import { User } from '@supabase/supabase-js';
 
-// Define o "molde" para como uma mensagem deve se parecer
 interface Message {
   id: string;
   content: string;
@@ -14,17 +13,19 @@ interface Message {
 }
 
 export default function DashboardPage() {
-  // --- SEÇÃO DE ESTADOS ---
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [tone, setTone] = useState('vendedor simpático e prestativo');
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [isSending, setIsSending] = useState(false);
+  const chatEndRef = useRef<HTMLDivElement>(null); // Referência para o final do chat
 
-  // --- SEÇÃO DE EFEITOS (LÓGICA QUE RODA AUTOMATICAMENTE) ---
+  // Efeito para rolar para a última mensagem
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
 
-  // Efeito 1: Roda uma vez para checar se o usuário está logado
   useEffect(() => {
     async function checkUserSession() {
       const { data: { session } } = await supabase.auth.getSession();
@@ -37,45 +38,35 @@ export default function DashboardPage() {
     checkUserSession();
   }, []);
 
-  // Efeito 2: Roda sempre que o 'user' for identificado, para carregar o histórico
   useEffect(() => {
     if (user) {
       setLoading(true);
       async function fetchMessages() {
-        // A CORREÇÃO DO ERRO ESTÁ AQUI: Garantimos que 'user' não é nulo
         if (!user) return;
-
-        const { data, error } = await supabase
-          .from('messages')
-          .select('*')
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: true });
-
-        if (data) {
-          setMessages(data);
-        }
+        const { data } = await supabase.from('messages').select('*').eq('user_id', user.id).order('created_at', { ascending: true });
+        if (data) setMessages(data);
         setLoading(false);
       }
       fetchMessages();
     }
   }, [user]);
 
-  // --- SEÇÃO DE FUNÇÕES (AÇÕES DO USUÁRIO) ---
-
-  // Função para fazer logout
   const handleLogout = async () => {
     await supabase.auth.signOut();
     window.location.href = '/';
   };
 
-  // Função para enviar uma nova mensagem
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newMessage.trim() || !user) return;
 
     const userMessage: Message = { id: Date.now().toString(), content: newMessage, role: 'user' };
-    const currentMessages = [...messages, userMessage];
-    setMessages(currentMessages);
+    
+    // CORREÇÃO: Cria uma cópia do histórico ANTES de adicionar a nova mensagem
+    const historyToSend = [...messages]; 
+    
+    // ATUALIZAÇÃO: Mostra a nova mensagem na tela imediatamente
+    setMessages(prev => [...prev, userMessage]);
     setNewMessage('');
     setIsSending(true);
 
@@ -87,16 +78,19 @@ export default function DashboardPage() {
           message: newMessage,
           tone: tone,
           userId: user.id,
-          history: messages,
+          history: historyToSend, // Envia o histórico limpo, sem a duplicata
         }),
       });
 
-      const data = await response.json();
-      
-      if (data.reply) {
-        const assistantMessage: Message = { id: Date.now().toString() + 'a', content: data.reply, role: 'assistant' };
-        setMessages(prev => [...prev, assistantMessage]);
+      // Busca as mensagens novamente do banco de dados para ter a versão mais atualizada
+      if (response.ok) {
+        const { data } = await supabase.from('messages').select('*').eq('user_id', user.id).order('created_at', { ascending: true });
+        if (data) setMessages(data);
+      } else {
+         const errorMessage: Message = { id: Date.now().toString() + 'e', content: "Desculpe, a IA não conseguiu responder.", role: 'assistant' };
+         setMessages(prev => [...prev, errorMessage]);
       }
+
     } catch (error) {
       console.error("Erro ao chamar API de chat:", error);
       const errorMessage: Message = { id: Date.now().toString() + 'e', content: "Desculpe, não consegui me conectar. Tente novamente.", role: 'assistant' };
@@ -106,14 +100,10 @@ export default function DashboardPage() {
     }
   };
 
-  // --- SEÇÃO DE RENDERIZAÇÃO (O QUE APARECE NA TELA) ---
-
-  // Tela de Loading
-  if (loading) {
+  if (loading && messages.length === 0) {
     return <div className="min-h-screen bg-brand-dark flex items-center justify-center text-white">Carregando histórico...</div>;
   }
 
-  // Tela Principal do Painel
   return (
     <div className="min-h-screen bg-brand-dark text-white p-4 md:p-8">
       <div className="max-w-6xl mx-auto">
@@ -126,7 +116,6 @@ export default function DashboardPage() {
         </header>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Coluna da Esquerda: Configurações */}
           <div className="lg:col-span-1 space-y-8">
             <div className="bg-gray-900/50 p-6 rounded-lg border border-gray-800">
               <h2 className="text-xl font-semibold mb-4">Status da Conexão</h2>
@@ -143,21 +132,13 @@ export default function DashboardPage() {
               <p className="text-sm text-gray-400 mt-2">Você tem 7 dias para testar todos os recursos.</p>
             </div>
           </div>
-
-          {/* Coluna da Direita: IA */}
           <div className="lg:col-span-2 bg-gray-900/50 p-6 rounded-lg border border-gray-800">
             <h2 className="text-xl font-semibold mb-4">Inteligência Artificial</h2>
             <div className="mb-6">
               <label htmlFor="tone" className="block text-sm font-medium text-gray-300 mb-2">Tom de Voz da IA:</label>
-              <input
-                id="tone"
-                type="text"
-                value={tone}
-                onChange={(e) => setTone(e.target.value)}
-                className="w-full px-3 py-2 text-white bg-gray-800 border border-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-blue"
-              />
+              <input id="tone" type="text" value={tone} onChange={(e) => setTone(e.target.value)}
+                className="w-full px-3 py-2 text-white bg-gray-800 border border-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-blue" />
             </div>
-
             <div className="h-96 flex flex-col bg-gray-800 rounded-lg p-4 border border-gray-700">
               <div className="flex-grow overflow-y-auto pr-2 space-y-4">
                 {messages.map(msg => (
@@ -172,16 +153,12 @@ export default function DashboardPage() {
                     <div className="px-4 py-2 rounded-2xl bg-gray-700 text-gray-200">Digitando...</div>
                   </div>
                 )}
+                 <div ref={chatEndRef} /> {/* Elemento invisível no final do chat */}
               </div>
               <form onSubmit={handleSendMessage} className="mt-4 flex">
-                <input
-                  type="text"
-                  value={newMessage}
-                  onChange={(e) => setNewMessage(e.target.value)}
-                  placeholder="Simule uma mensagem do cliente..."
+                <input type="text" value={newMessage} onChange={(e) => setNewMessage(e.target.value)} placeholder="Simule uma mensagem do cliente..."
                   className="flex-grow px-4 py-2 bg-gray-700 text-white border border-gray-600 rounded-l-lg focus:outline-none focus:ring-2 focus:ring-brand-blue disabled:bg-gray-600"
-                  disabled={isSending}
-                />
+                  disabled={isSending} />
                 <button type="submit" className="px-6 py-2 bg-brand-green text-black font-semibold rounded-r-lg disabled:bg-green-800" disabled={isSending}>
                   Enviar
                 </button>
@@ -194,4 +171,4 @@ export default function DashboardPage() {
   );
 }
 
-// FINAL DO CÓDIGO ATUALIZADO v2.0
+// FINAL DO CÓDIGO ATUALIZADO v3.1 (Final)
