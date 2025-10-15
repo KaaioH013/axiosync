@@ -1,7 +1,8 @@
-// INÍCIO DO CÓDIGO ATUALIZADO v3.3 (Completo e Final)
+// INÍCIO DO CÓDIGO ATUALIZADO v3.5 (100% Completo)
 
 "use client";
 
+import Link from 'next/link'; // Importa o componente de Link
 import { useEffect, useState, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { User } from '@supabase/supabase-js';
@@ -14,90 +15,58 @@ interface Message {
 }
 
 export default function DashboardPage() {
-  // --- SEÇÃO DE ESTADOS ---
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [tone, setTone] = useState('vendedor simpático e prestativo');
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [isSending, setIsSending] = useState(false);
-  
-  // Estados para a Base de Conhecimento
   const [knowledge, setKnowledge] = useState('');
   const [savingKnowledge, setSavingKnowledge] = useState(false);
   const [knowledgeSaveMessage, setKnowledgeSaveMessage] = useState('');
+  const chatEndRef = useRef<HTMLDivElement>(null);
 
-  const chatEndRef = useRef<HTMLDivElement>(null); // Referência para o final do chat
-
-  // --- SEÇÃO DE EFEITOS ---
-
-  // Efeito para rolar para a última mensagem
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // Efeito 1: Roda uma vez para checar se o usuário está logado
   useEffect(() => {
     async function checkUserSession() {
       const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        setUser(session.user);
-      } else {
-        window.location.href = '/login';
-      }
+      if (session) setUser(session.user);
+      else window.location.href = '/login';
     }
     checkUserSession();
   }, []);
 
-  // Efeito 2: Roda sempre que o 'user' for identificado, para carregar os dados
   useEffect(() => {
     if (user) {
       setLoading(true);
       async function fetchData() {
         if (!user) return;
-        
-        // Busca o histórico de mensagens
         const messagesPromise = supabase.from('messages').select('*').eq('user_id', user.id).order('created_at', { ascending: true });
-        
-        // Busca a base de conhecimento
         const knowledgePromise = supabase.from('knowledge_base').select('content').eq('user_id', user.id).single();
-
-        // Executa as duas buscas ao mesmo tempo para mais performance
         const [messagesResult, knowledgeResult] = await Promise.all([messagesPromise, knowledgePromise]);
-
-        if (messagesResult.data) {
-          setMessages(messagesResult.data);
-        }
-        if (knowledgeResult.data) {
-          setKnowledge(knowledgeResult.data.content);
-        }
-
+        if (messagesResult.data) setMessages(messagesResult.data);
+        if (knowledgeResult.data) setKnowledge(knowledgeResult.data.content);
         setLoading(false);
       }
       fetchData();
     }
   }, [user]);
 
-  // --- SEÇÃO DE FUNÇÕES ---
-
-  // Função para fazer logout
   const handleLogout = async () => {
     await supabase.auth.signOut();
     window.location.href = '/';
   };
 
-  // Função para salvar a base de conhecimento
   const handleSaveKnowledge = async () => {
     if (!user) return;
     setSavingKnowledge(true);
     setKnowledgeSaveMessage('');
-
-    // "Upsert" tenta atualizar. Se não existir, ele cria uma nova linha.
-    // onConflict diz qual coluna usar para verificar se já existe.
     const { error } = await supabase
       .from('knowledge_base')
       .upsert({ user_id: user.id, content: knowledge }, { onConflict: 'user_id' });
-
     if (error) {
       setKnowledgeSaveMessage('Erro ao salvar.');
       console.error('Erro ao salvar conhecimento:', error);
@@ -105,22 +74,17 @@ export default function DashboardPage() {
       setKnowledgeSaveMessage('Salvo com sucesso!');
     }
     setSavingKnowledge(false);
-    // Limpa a mensagem de sucesso após 2 segundos
     setTimeout(() => setKnowledgeSaveMessage(''), 2000);
   };
 
-  // Função para enviar uma nova mensagem
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newMessage.trim() || !user) return;
-
     const userMessage: Message = { id: Date.now().toString(), content: newMessage, role: 'user' };
-    const historyToSend = [...messages]; 
-    
+    const historyToSend = [...messages];
     setMessages(prev => [...prev, userMessage]);
     setNewMessage('');
     setIsSending(true);
-
     try {
       const response = await fetch('/api/chat', {
         method: 'POST',
@@ -132,16 +96,13 @@ export default function DashboardPage() {
           history: historyToSend,
         }),
       });
-
       if (response.ok) {
-        // Após a API responder com sucesso, busca a lista atualizada do banco de dados
         const { data } = await supabase.from('messages').select('*').eq('user_id', user.id).order('created_at', { ascending: true });
         if (data) setMessages(data);
       } else {
-         const errorMessage: Message = { id: Date.now().toString() + 'e', content: "Desculpe, a IA não conseguiu responder.", role: 'assistant' };
-         setMessages(prev => [...prev, errorMessage]);
+        const errorMessage: Message = { id: Date.now().toString() + 'e', content: "Desculpe, a IA não conseguiu responder.", role: 'assistant' };
+        setMessages(prev => [...prev, errorMessage]);
       }
-
     } catch (error) {
       console.error("Erro ao chamar API de chat:", error);
       const errorMessage: Message = { id: Date.now().toString() + 'e', content: "Desculpe, não consegui me conectar. Tente novamente.", role: 'assistant' };
@@ -151,19 +112,17 @@ export default function DashboardPage() {
     }
   };
 
-  // --- SEÇÃO DE RENDERIZAÇÃO ---
-
-  // Tela de Loading
   if (loading && messages.length === 0) {
     return <div className="min-h-screen bg-brand-dark flex items-center justify-center text-white">Carregando dados...</div>;
   }
 
-  // Tela Principal do Painel
   return (
     <div className="min-h-screen bg-brand-dark text-white p-4 md:p-8">
-      <div className="max-w-7xl mx-auto"> {/* Aumentei um pouco o max-w para mais espaço */}
+      <div className="max-w-7xl mx-auto">
         <header className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-bold font-serif">Painel AxioSync</h1>
+          <Link href="/" className="hover:opacity-80 transition-opacity">
+            <h1 className="text-3xl font-bold font-serif">Painel AxioSync</h1>
+          </Link>
           <div>
             <span className="text-gray-400 mr-4 hidden sm:inline">{user?.email}</span>
             <button onClick={handleLogout} className="text-red-500 hover:underline font-semibold">Sair</button>
@@ -171,7 +130,6 @@ export default function DashboardPage() {
         </header>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Coluna da Esquerda: Configurações */}
           <div className="lg:col-span-1 space-y-8">
             <div className="bg-gray-900/50 p-6 rounded-lg border border-gray-800">
               <h2 className="text-xl font-semibold mb-4">Status da Conexão</h2>
@@ -213,7 +171,6 @@ export default function DashboardPage() {
             </div>
           </div>
           
-          {/* Coluna da Direita: IA */}
           <div className="lg:col-span-2 bg-gray-900/50 p-6 rounded-lg border border-gray-800">
             <h2 className="text-xl font-semibold mb-4">Inteligência Artificial</h2>
             <div className="mb-6">
@@ -253,4 +210,4 @@ export default function DashboardPage() {
   );
 }
 
-// FINAL DO CÓDIGO ATUALIZADO v3.3 (Completo e Final)
+// FINAL DO CÓDIGO ATUALIZADO v3.5 (100% Completo)

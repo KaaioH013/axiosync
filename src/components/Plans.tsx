@@ -1,17 +1,15 @@
-// INÍCIO DO CÓDIGO ATUALIZADO v2.0 (Componente de Planos Interativo)
+// INÍCIO DO CÓDIGO ATUALIZADO v2.1 (Componente de Planos Corrigido)
 
-"use client"; // Transforma este em um componente interativo
+"use client";
 
-import Link from 'next/link';
 import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase'; // Importa nosso conector do Supabase
+import { supabase } from '@/lib/supabase';
 import { User } from '@supabase/supabase-js';
 
 export function Plans() {
   const [user, setUser] = useState<User | null>(null);
   const [loadingPriceId, setLoadingPriceId] = useState<string | null>(null);
 
-  // Efeito que roda uma vez para checar se há um usuário logado
   useEffect(() => {
     async function checkUser() {
       const { data: { session } } = await supabase.auth.getSession();
@@ -26,40 +24,45 @@ export function Plans() {
     { name: "Premium", price: "99", numbers: "Números ilimitados", bestFor: "Para alta demanda", priceId: process.env.NEXT_PUBLIC_STRIPE_PREMIUM_PRICE_ID! },
   ];
 
-  // A função que é chamada quando um botão de assinar é clicado
   const handleCheckout = async (priceId: string) => {
-    setLoadingPriceId(priceId); // Mostra o "carregando" no botão clicado
+    setLoadingPriceId(priceId);
 
-    // Se não tiver usuário logado, redireciona para a página de login
     if (!user) {
       window.location.href = '/login';
       return;
     }
 
     try {
+      // A CORREÇÃO ESTÁ AQUI: Enviamos o e-mail do usuário no corpo da requisição
       const response = await fetch('/api/create-checkout-session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ priceId: priceId, userId: user.id }),
+        body: JSON.stringify({ 
+          priceId: priceId, 
+          userId: user.id,
+          userEmail: user.email // <<<--- ADICIONAMOS ESTA LINHA
+        }),
       });
 
       const data = await response.json();
 
       if (data.url) {
-        // Redireciona o usuário para a página de pagamento do Stripe
         window.location.href = data.url;
       } else {
         console.error('Erro ao obter URL de checkout:', data.error);
+        alert("Ocorreu um erro ao iniciar o pagamento. Tente novamente.");
         setLoadingPriceId(null);
       }
     } catch (error) {
       console.error('Erro na chamada de checkout:', error);
+      alert("Ocorreu um erro ao iniciar o pagamento. Tente novamente.");
       setLoadingPriceId(null);
     }
   };
 
   return (
     <section id="plans" className="py-20 px-4">
+      {/* ... O resto do código visual é o mesmo ... */}
       <div className="container mx-auto text-center">
         <h2 className="text-3xl md:text-4xl font-bold text-white mb-12">
           Planos que se adaptam ao seu negócio
@@ -95,4 +98,4 @@ export function Plans() {
   );
 };
 
-// FINAL DO CÓDIGO ATUALIZADO v2.0 (Componente de Planos Interativo)
+// FINAL DO CÓDIGO ATUALIZADO v2.1 (Componente de Planos Corrigido)
