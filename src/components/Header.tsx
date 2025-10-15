@@ -7,7 +7,7 @@ export function Header() {
     <header className="absolute top-0 left-0 w-full z-10 py-6 px-4 md:px-8">
       <div className="container mx-auto flex justify-between items-center">
         {/* Nome do Site */}
-        <h1 className="text-2xl font-bold text-white font-serif">SmartZap</h1>
+        <h1 className="text-2xl font-bold text-white font-serif">AxioSync</h1>
 
         {/* Menu de Navegação (aparece em telas maiores) */}
         <nav className="hidden md:flex items-center space-x-8">

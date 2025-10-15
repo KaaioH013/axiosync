@@ -49,7 +49,7 @@ export default function LoginPage() {
     <div className="min-h-screen bg-brand-dark flex flex-col justify-center items-center p-4">
       <div className="w-full max-w-md p-8 space-y-6 bg-gray-900/50 border border-gray-800 rounded-lg shadow-lg text-center">
         <h1 className="text-3xl font-bold text-white font-serif">
-          {isSignUp ? 'Crie sua Conta' : 'Acesse o SmartZap'}
+          {isSignUp ? 'Crie sua Conta' : 'Acesse o AxioSync'}
         </h1>
 
         <form onSubmit={handleAuthAction} className="space-y-4">

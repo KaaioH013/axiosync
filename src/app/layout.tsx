@@ -15,7 +15,7 @@ const inter = Inter({
 })
 
 export const metadata = {
-  title: 'SmartZap - Automação de WhatsApp com IA',
+  title: 'AxioSync - Automação de WhatsApp com IA',
   description: 'Automatize seu atendimento no WhatsApp com uma inteligência artificial personalizada.',
 }
 

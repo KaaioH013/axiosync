@@ -163,7 +163,7 @@ export default function DashboardPage() {
     <div className="min-h-screen bg-brand-dark text-white p-4 md:p-8">
       <div className="max-w-7xl mx-auto"> {/* Aumentei um pouco o max-w para mais espaço */}
         <header className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-bold font-serif">Painel SmartZap</h1>
+          <h1 className="text-3xl font-bold font-serif">Painel AxioSync</h1>
           <div>
             <span className="text-gray-400 mr-4 hidden sm:inline">{user?.email}</span>
             <button onClick={handleLogout} className="text-red-500 hover:underline font-semibold">Sair</button>
