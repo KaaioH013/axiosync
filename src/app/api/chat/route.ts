@@ -1,6 +1,6 @@
-// INÍCIO DO CÓDIGO ATUALIZADO v4.0 (Versão Limpa)
+// INÍCIO DO CÓDIGO ATUALIZADO v5.0 (IA com Base de Conhecimento)
 
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GoogleGenerativeAI, SystemInstruction } from "@google/generative-ai";
 import { createClient } from '@supabase/supabase-js';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
@@ -18,14 +18,40 @@ export async function POST(request: Request) {
       return new Response(JSON.stringify({ error: 'Dados incompletos' }), { status: 400 });
     }
 
-    // Salva a mensagem do usuário no banco de dados
-    await supabaseAdmin.from('messages').insert({
-      user_id: userId,
-      content: message,
-      role: 'user',
-    });
+    // --- ETAPA 1: BUSCAR A BASE DE CONHECIMENTO ---
+    const { data: knowledgeData, error: knowledgeError } = await supabaseAdmin
+      .from('knowledge_base')
+      .select('content')
+      .eq('user_id', userId)
+      .single();
 
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+    let knowledgeBaseContent = "Nenhuma informação adicional foi fornecida.";
+    if (knowledgeData) {
+      knowledgeBaseContent = knowledgeData.content;
+    }
+
+    // --- ETAPA 2: CONSTRUIR O "SUPER PROMPT" ---
+    const systemInstruction: SystemInstruction = {
+      role: "system",
+      parts: [{ text: `
+        Você é um assistente de atendimento especialista. Seu tom de voz deve ser: "${tone}".
+        Use a seguinte BASE DE CONHECIMENTO para responder às perguntas do usuário. Seja fiel a esta informação.
+        
+        BASE DE CONHECIMENTO:
+        ---
+        ${knowledgeBaseContent}
+        ---
+      `}],
+    };
+    
+    // Salva a mensagem do usuário no banco de dados ANTES de chamar a IA
+    await supabaseAdmin.from('messages').insert({ user_id: userId, content: message, role: 'user' });
+
+    // --- ETAPA 3: CHAMAR A IA COM O NOVO CONTEXTO ---
+    const model = genAI.getGenerativeModel({ 
+      model: "gemini-2.5-flash",
+      systemInstruction: systemInstruction, // Injeta a Base de Conhecimento no cérebro da IA
+    });
 
     const formattedHistory = history.map((msg: { role: string, content: string }) => ({
       role: msg.role === 'assistant' ? 'model' : 'user',
@@ -45,11 +71,7 @@ export async function POST(request: Request) {
     const reply = response.text();
 
     // Salva a resposta da IA no banco de dados
-    await supabaseAdmin.from('messages').insert({
-      user_id: userId,
-      content: reply,
-      role: 'assistant',
-    });
+    await supabaseAdmin.from('messages').insert({ user_id: userId, content: reply, role: 'assistant' });
 
     return new Response(JSON.stringify({ reply }), { status: 200 });
 
@@ -59,4 +81,4 @@ export async function POST(request: Request) {
   }
 }
 
-// FINAL DO CÓDIGO ATUALIZADO v4.0 (Versão Limpa)
+// FINAL DO CÓDIGO ATUALIZADO v5.0 (IA com Base de Conhecimento)
