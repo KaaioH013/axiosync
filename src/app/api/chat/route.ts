@@ -1,4 +1,4 @@
-// INÍCIO DO CÓDIGO ATUALIZADO v3.2 (Diagnóstico Final)
+// INÍCIO DO CÓDIGO ATUALIZADO v4.0 (Versão Limpa)
 
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { createClient } from '@supabase/supabase-js';
@@ -18,10 +18,15 @@ export async function POST(request: Request) {
       return new Response(JSON.stringify({ error: 'Dados incompletos' }), { status: 400 });
     }
 
-    await supabaseAdmin.from('messages').insert({ user_id: userId, content: message, role: 'user' });
+    // Salva a mensagem do usuário no banco de dados
+    await supabaseAdmin.from('messages').insert({
+      user_id: userId,
+      content: message,
+      role: 'user',
+    });
 
     const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-    
+
     const formattedHistory = history.map((msg: { role: string, content: string }) => ({
       role: msg.role === 'assistant' ? 'model' : 'user',
       parts: [{ text: msg.content }],
@@ -29,25 +34,29 @@ export async function POST(request: Request) {
 
     const chat = model.startChat({
       history: formattedHistory,
-      generationConfig: { temperature: 0.7, maxOutputTokens: 8192 },
+      generationConfig: {
+        temperature: 0.7,
+        maxOutputTokens: 8192,
+      },
     });
 
     const result = await chat.sendMessage(message);
     const response = await result.response;
-
-    // LUZ DE DIAGNÓSTICO FINAL: O que tem dentro da "caixa" que o Gemini enviou?
-    console.log("RESPOSTA BRUTA DO GEMINI:", JSON.stringify(response, null, 2));
-
     const reply = response.text();
 
-    await supabaseAdmin.from('messages').insert({ user_id: userId, content: reply, role: 'assistant' });
+    // Salva a resposta da IA no banco de dados
+    await supabaseAdmin.from('messages').insert({
+      user_id: userId,
+      content: reply,
+      role: 'assistant',
+    });
 
     return new Response(JSON.stringify({ reply }), { status: 200 });
 
   } catch (error) {
-    console.error('[ERRO DETALHADO NO CATCH]', error);
+    console.error('[CHAT_API_ERROR_GEMINI]', error);
     return new Response(JSON.stringify({ error: 'Ocorreu um erro ao processar sua mensagem com o Gemini.' }), { status: 500 });
   }
 }
 
-// FINAL DO CÓDIGO ATUALIZADO v3.2 (Diagnóstico Final)
+// FINAL DO CÓDIGO ATUALIZADO v4.0 (Versão Limpa)
