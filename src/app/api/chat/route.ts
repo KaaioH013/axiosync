@@ -29,7 +29,7 @@ export async function POST(request: Request) {
 
     const chat = model.startChat({
       history: formattedHistory,
-      generationConfig: { temperature: 0.7, maxOutputTokens: 150 },
+      generationConfig: { temperature: 0.7, maxOutputTokens: 8192 },
     });
 
     const result = await chat.sendMessage(message);
