@@ -8,7 +8,7 @@ import { NextResponse } from 'next/server';
 function formatApiResponse(text: string): string {
   if (!text) return '';
   // 1. Remove as citações, como ou
-  const textWithoutCitations = text.replace(/\/g, '');
+  const textWithoutCitations = text.replace(/\[cite:\s*\d+\]/g, '');
   // 2. Converte o negrito do Markdown (**) para o formato do WhatsApp (*)
   const textWithWhatsappBold = textWithoutCitations.replace(/\*\*(.*?)\*\*/g, '*$1*');
   
