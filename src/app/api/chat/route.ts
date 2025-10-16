@@ -1,10 +1,10 @@
-// INÍCIO DO CÓDIGO ATUALIZADO v5.2 (API com Limpeza de Resposta)
+// INÍCIO DO CÓDIGO ATUALIZADO v5.4 (A Versão FINAL e CORRIGIDA da API)
 
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
 
-// --- FUNÇÃO DE "LIMPEZA" ---
+// --- FUNÇÃO DE "LIMPEZA" 100% CORRIGIDA ---
 function formatApiResponse(text: string): string {
   if (!text) return '';
   // 1. Remove as citações, como ou
@@ -41,6 +41,7 @@ export async function POST(request: Request) {
     const systemInstruction = `
         Você é um assistente de atendimento especialista. Seu tom de voz deve ser: "${tone}".
         Use a seguinte BASE DE CONHECIMENTO para responder às perguntas do usuário. Seja fiel a esta informação.
+        
         BASE DE CONHECIMENTO:
         ---
         ${knowledgeBaseContent}
@@ -48,7 +49,7 @@ export async function POST(request: Request) {
       `;
 
     const model = genAI.getGenerativeModel({ 
-      model: "gemini-1.5-flash", // Usando o modelo que você descobriu que funciona!
+      model: "gemini-1.5-flash",
       systemInstruction: {
         role: "system",
         parts: [{ text: systemInstruction }],
@@ -72,13 +73,10 @@ export async function POST(request: Request) {
     const response = await result.response;
     const rawReply = response.text();
 
-    // A MÁGICA ESTÁ AQUI: Limpamos a resposta ANTES de fazer qualquer outra coisa
     const cleanedReply = formatApiResponse(rawReply);
 
-    // Salva a resposta JÁ LIMPA no banco de dados
     await supabaseAdmin.from('messages').insert({ user_id: userId, content: cleanedReply, role: 'assistant' });
 
-    // Envia a resposta JÁ LIMPA de volta para o painel
     return new Response(JSON.stringify({ reply: cleanedReply }), { status: 200 });
 
   } catch (error) {
@@ -87,4 +85,4 @@ export async function POST(request: Request) {
   }
 }
 
-// FINAL DO CÓDIGO ATUALIZADO v5.2 (API com Limpeza de Resposta)
+// FINAL DO CÓDIGO ATUALIZADO v5.4 (A Versão FINAL e CORRIGIDA da API)
