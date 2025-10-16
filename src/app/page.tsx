@@ -14,3 +14,5 @@ export default function HomePage() {
     </main>
   );
 }
+
+// Forçando o redeploy para carregar as variáveis de ambiente de teste  
