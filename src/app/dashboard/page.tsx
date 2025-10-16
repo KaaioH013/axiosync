@@ -1,4 +1,4 @@
-// INÍCIO DO CÓDIGO ATUALIZADO v4.4 (A Versão FINAL e CORRIGIDA)
+// INÍCIO DO CÓDIGO ATUALIZADO v4.7 (Painel 100% Completo e Simplificado)
 
 "use client";
 
@@ -7,18 +7,6 @@ import { useEffect, useState, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { User } from '@supabase/supabase-js';
 import { DashboardPlans } from '@/components/DashboardPlans';
-
-// --- FUNÇÃO DE "LIMPEZA" 100% CORRIGIDA ---
-function formatApiResponse(text: string): string {
-  if (!text) return ''; // Garante que não tentaremos formatar um texto nulo ou indefinido
-  // 1. Remove as citações, como ou
-  // remove aspas simples, duplas e aspas tipográficas (“ ” ‘ ’) e acentos graves
-  const textWithoutCitations = text.replace(/["“”‘’'`]/g, '');
-  // 2. Converte o negrito do Markdown (**) para o formato do WhatsApp (*)
-  const textWithWhatsappBold = textWithoutCitations.replace(/\*\*(.*?)\*\*/g, '*$1*');
-  
-  return textWithWhatsappBold.trim();
-}
 
 interface Message {
   id: string;
@@ -107,9 +95,11 @@ export default function DashboardPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: newMessage, tone, userId: user.id, history: historyToSend }),
       });
-      if (response.ok) {
-        const { data } = await supabase.from('messages').select('*').eq('user_id', user.id).order('created_at', { ascending: true });
-        if (data) setMessages(data);
+      const data = await response.json();
+
+      if (data.reply) {
+        const assistantMessage: Message = { id: Date.now().toString() + 'a', content: data.reply, role: 'assistant' };
+        setMessages(prev => [...prev, assistantMessage]);
       } else {
         const errorMessage: Message = { id: Date.now().toString() + 'e', content: "Desculpe, a IA não conseguiu responder.", role: 'assistant' };
         setMessages(prev => [...prev, errorMessage]);
@@ -191,7 +181,7 @@ export default function DashboardPage() {
                     {messages.map(msg => (
                       <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                         <div className={`max-w-xs md:max-w-md lg:max-w-lg px-4 py-2 rounded-2xl whitespace-pre-wrap ${msg.role === 'user' ? 'bg-brand-blue text-white rounded-br-none' : 'bg-gray-700 text-gray-200 rounded-bl-none'}`}>
-                          {formatApiResponse(msg.content)}
+                          {msg.content}
                         </div>
                       </div>
                     ))}
@@ -222,4 +212,4 @@ export default function DashboardPage() {
   );
 }
 
-// FINAL DO CÓDIGO ATUALIZADO v4.4 (A Versão FINAL e CORRIGIDA)
+// FINAL DO CÓDIGO ATUALIZADO v4.7 (Painel 100% Completo e Simplificado)

@@ -1,7 +1,19 @@
-// INÍCIO DO CÓDIGO ATUALIZADO v5.1 (Correção do SystemInstruction)
+// INÍCIO DO CÓDIGO ATUALIZADO v5.2 (API com Limpeza de Resposta)
 
-import { GoogleGenerativeAI } from "@google/generative-ai"; // Removida a importação de 'SystemInstruction'
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import { createClient } from '@supabase/supabase-js';
+import { NextResponse } from 'next/server';
+
+// --- FUNÇÃO DE "LIMPEZA" ---
+function formatApiResponse(text: string): string {
+  if (!text) return '';
+  // 1. Remove as citações, como ou
+  const textWithoutCitations = text.replace(/\/g, '');
+  // 2. Converte o negrito do Markdown (**) para o formato do WhatsApp (*)
+  const textWithWhatsappBold = textWithoutCitations.replace(/\*\*(.*?)\*\*/g, '*$1*');
+  
+  return textWithWhatsappBold.trim();
+}
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
@@ -17,37 +29,26 @@ export async function POST(request: Request) {
     if (!message || !tone || !userId || history === undefined) {
       return new Response(JSON.stringify({ error: 'Dados incompletos' }), { status: 400 });
     }
-
-    // --- ETAPA 1: BUSCAR A BASE DE CONHECIMENTO ---
-    const { data: knowledgeData } = await supabaseAdmin
-      .from('knowledge_base')
-      .select('content')
-      .eq('user_id', userId)
-      .single();
-
+    
+    await supabaseAdmin.from('messages').insert({ user_id: userId, content: message, role: 'user' });
+    
+    const { data: knowledgeData } = await supabaseAdmin.from('knowledge_base').select('content').eq('user_id', userId).single();
     let knowledgeBaseContent = "Nenhuma informação adicional foi fornecida.";
     if (knowledgeData && knowledgeData.content) {
       knowledgeBaseContent = knowledgeData.content;
     }
 
-    // --- ETAPA 2: CONSTRUIR O "SUPER PROMPT" ---
-    // A instrução de sistema agora é um objeto simples, sem o tipo 'SystemInstruction'
     const systemInstruction = `
         Você é um assistente de atendimento especialista. Seu tom de voz deve ser: "${tone}".
         Use a seguinte BASE DE CONHECIMENTO para responder às perguntas do usuário. Seja fiel a esta informação.
-        
         BASE DE CONHECIMENTO:
         ---
         ${knowledgeBaseContent}
         ---
       `;
-    
-    await supabaseAdmin.from('messages').insert({ user_id: userId, content: message, role: 'user' });
 
-    // --- ETAPA 3: CHAMAR A IA COM O NOVO CONTEXTO ---
-    // A CORREÇÃO ESTÁ AQUI: Passamos a instrução de sistema diretamente na configuração do modelo
     const model = genAI.getGenerativeModel({ 
-      model: "gemini-2.5-flash",
+      model: "gemini-1.5-flash", // Usando o modelo que você descobriu que funciona!
       systemInstruction: {
         role: "system",
         parts: [{ text: systemInstruction }],
@@ -69,11 +70,16 @@ export async function POST(request: Request) {
 
     const result = await chat.sendMessage(message);
     const response = await result.response;
-    const reply = response.text();
+    const rawReply = response.text();
 
-    await supabaseAdmin.from('messages').insert({ user_id: userId, content: reply, role: 'assistant' });
+    // A MÁGICA ESTÁ AQUI: Limpamos a resposta ANTES de fazer qualquer outra coisa
+    const cleanedReply = formatApiResponse(rawReply);
 
-    return new Response(JSON.stringify({ reply }), { status: 200 });
+    // Salva a resposta JÁ LIMPA no banco de dados
+    await supabaseAdmin.from('messages').insert({ user_id: userId, content: cleanedReply, role: 'assistant' });
+
+    // Envia a resposta JÁ LIMPA de volta para o painel
+    return new Response(JSON.stringify({ reply: cleanedReply }), { status: 200 });
 
   } catch (error) {
     console.error('[CHAT_API_ERROR_GEMINI]', error);
@@ -81,4 +87,4 @@ export async function POST(request: Request) {
   }
 }
 
-// FINAL DO CÓDIGO ATUALIZADO v5.1 (Correção do SystemInstruction)
+// FINAL DO CÓDIGO ATUALIZADO v5.2 (API com Limpeza de Resposta)
