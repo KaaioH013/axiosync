@@ -1,4 +1,4 @@
-// INÍCIO DO CÓDIGO ATUALIZADO v2.1 (Componente de Planos Corrigido)
+// INÍCIO DO CÓDIGO ATUALIZADO v2.2 (Modo de Diagnóstico)
 
 "use client";
 
@@ -26,35 +26,24 @@ export function Plans() {
 
   const handleCheckout = async (priceId: string) => {
     setLoadingPriceId(priceId);
-
     if (!user) {
       window.location.href = '/login';
       return;
     }
-
     try {
-      // A CORREÇÃO ESTÁ AQUI: Enviamos o e-mail do usuário no corpo da requisição
       const response = await fetch('/api/create-checkout-session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          priceId: priceId, 
-          userId: user.id,
-          userEmail: user.email // <<<--- ADICIONAMOS ESTA LINHA
-        }),
+        body: JSON.stringify({ priceId: priceId, userId: user.id, userEmail: user.email }),
       });
-
       const data = await response.json();
-
       if (data.url) {
         window.location.href = data.url;
       } else {
-        console.error('Erro ao obter URL de checkout:', data.error);
         alert("Ocorreu um erro ao iniciar o pagamento. Tente novamente.");
         setLoadingPriceId(null);
       }
     } catch (error) {
-      console.error('Erro na chamada de checkout:', error);
       alert("Ocorreu um erro ao iniciar o pagamento. Tente novamente.");
       setLoadingPriceId(null);
     }
@@ -62,8 +51,23 @@ export function Plans() {
 
   return (
     <section id="plans" className="py-20 px-4">
-      {/* ... O resto do código visual é o mesmo ... */}
       <div className="container mx-auto text-center">
+        
+        {/* ======================= INÍCIO DO BLOCO DE DIAGNÓSTICO ======================= */}
+        <div className="mb-10 p-4 border border-red-500 rounded-lg text-left bg-gray-900">
+          <h3 className="text-lg font-bold text-red-400 mb-2">DEBUG: Variáveis de Ambiente Atuais</h3>
+          <p className="text-xs font-mono break-all">
+            <strong>STARTER:</strong> {process.env.NEXT_PUBLIC_STRIPE_STARTER_PRICE_ID}
+          </p>
+          <p className="text-xs font-mono break-all">
+            <strong>PRO:</strong> {process.env.NEXT_PUBLIC_STRIPE_PRO_PRICE_ID}
+          </p>
+          <p className="text-xs font-mono break-all">
+            <strong>PREMIUM:</strong> {process.env.NEXT_PUBLIC_STRIPE_PREMIUM_PRICE_ID}
+          </p>
+        </div>
+        {/* ======================= FIM DO BLOCO DE DIAGNÓSTICO ======================= */}
+
         <h2 className="text-3xl md:text-4xl font-bold text-white mb-12">
           Planos que se adaptam ao seu negócio
         </h2>
@@ -98,4 +102,4 @@ export function Plans() {
   );
 };
 
-// FINAL DO CÓDIGO ATUALIZADO v2.1 (Componente de Planos Corrigido)
+// FINAL DO CÓDIGO ATUALIZADO v2.2 (Modo de Diagnóstico)
