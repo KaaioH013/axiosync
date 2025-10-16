@@ -1,4 +1,4 @@
-// INÍCIO DO CÓDIGO ATUALIZADO v4.3 (Versão Final com Polimento)
+// INÍCIO DO CÓDIGO ATUALIZADO v4.4 (A Versão FINAL e CORRIGIDA)
 
 "use client";
 
@@ -8,15 +8,16 @@ import { supabase } from '@/lib/supabase';
 import { User } from '@supabase/supabase-js';
 import { DashboardPlans } from '@/components/DashboardPlans';
 
-// --- NOVA FUNÇÃO DE "LIMPEZA" ---
-// Esta função recebe o texto bruto da IA e o deixa bonito
+// --- FUNÇÃO DE "LIMPEZA" 100% CORRIGIDA ---
 function formatApiResponse(text: string): string {
-  [cite_start]// 1. Remove as citações, como [cite: 53] [cite_start]ou [cite: 69, 74]
-  const textWithoutCitations = text.replace(/\/g, '');
+  if (!text) return ''; // Garante que não tentaremos formatar um texto nulo ou indefinido
+  // 1. Remove as citações, como ou
+  // remove aspas simples, duplas e aspas tipográficas (“ ” ‘ ’) e acentos graves
+  const textWithoutCitations = text.replace(/["“”‘’'`]/g, '');
   // 2. Converte o negrito do Markdown (**) para o formato do WhatsApp (*)
   const textWithWhatsappBold = textWithoutCitations.replace(/\*\*(.*?)\*\*/g, '*$1*');
   
-  return textWithWhatsappBold.trim(); // trim() remove espaços extras no início e fim
+  return textWithWhatsappBold.trim();
 }
 
 interface Message {
@@ -32,7 +33,7 @@ export default function DashboardPage() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [subscription, setSubscription] = useState<Subscription | null>(null);
-  const [tone, setTone] = useState('vendedor simpático e prestativo');
+  const [tone, setTone] = useState('Vendedor técnico consultivo, especialista em bombas helicoidais da Helibombas. Seja profissional, direto e foque em entender a necessidade do cliente para oferecer a melhor solução.');
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [isSending, setIsSending] = useState(false);
@@ -72,33 +73,43 @@ export default function DashboardPage() {
     }
   }, [user]);
 
-  const handleLogout = async () => { /* ...código existente... */ };
-  const handleSaveKnowledge = async () => { /* ...código existente... */ };
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    window.location.href = '/';
+  };
+
+  const handleSaveKnowledge = async () => {
+    if (!user) return;
+    setSavingKnowledge(true);
+    setKnowledgeSaveMessage('');
+    const { error } = await supabase.from('knowledge_base').upsert({ user_id: user.id, content: knowledge }, { onConflict: 'user_id' });
+    if (error) {
+      setKnowledgeSaveMessage('Erro ao salvar.');
+      console.error('Erro:', error);
+    } else {
+      setKnowledgeSaveMessage('Salvo com sucesso!');
+    }
+    setSavingKnowledge(false);
+    setTimeout(() => setKnowledgeSaveMessage(''), 2000);
+  };
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newMessage.trim() || !user) return;
-
     const userMessage: Message = { id: Date.now().toString(), content: newMessage, role: 'user' };
     const historyToSend = [...messages];
     setMessages(prev => [...prev, userMessage]);
     setNewMessage('');
     setIsSending(true);
-
     try {
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: newMessage, tone, userId: user.id, history: historyToSend }),
       });
-
       if (response.ok) {
-        // ATUALIZAÇÃO IMPORTANTE: Agora, nós também limpamos a resposta da IA antes de salvar
         const { data } = await supabase.from('messages').select('*').eq('user_id', user.id).order('created_at', { ascending: true });
-        
-        // A gente limpa as mensagens que vêm do banco de dados também, para o caso de alguma ter sido salva com o formato antigo
-        const cleanedMessages = data?.map(msg => ({ ...msg, content: formatApiResponse(msg.content) })) || [];
-        setMessages(cleanedMessages);
+        if (data) setMessages(data);
       } else {
         const errorMessage: Message = { id: Date.now().toString() + 'e', content: "Desculpe, a IA não conseguiu responder.", role: 'assistant' };
         setMessages(prev => [...prev, errorMessage]);
@@ -111,8 +122,6 @@ export default function DashboardPage() {
       setIsSending(false);
     }
   };
-
-  // ... (O resto do arquivo continua o mesmo, cole o código completo abaixo para garantir)
 
   if (loading) {
     return <div className="min-h-screen bg-brand-dark flex items-center justify-center text-white">Verificando sua conta...</div>;
@@ -182,7 +191,7 @@ export default function DashboardPage() {
                     {messages.map(msg => (
                       <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                         <div className={`max-w-xs md:max-w-md lg:max-w-lg px-4 py-2 rounded-2xl whitespace-pre-wrap ${msg.role === 'user' ? 'bg-brand-blue text-white rounded-br-none' : 'bg-gray-700 text-gray-200 rounded-bl-none'}`}>
-                          {formatApiResponse(msg.content)} {/* Limpa a mensagem antes de mostrar */}
+                          {formatApiResponse(msg.content)}
                         </div>
                       </div>
                     ))}
@@ -213,20 +222,4 @@ export default function DashboardPage() {
   );
 }
 
-// Para garantir que nada se perca, aqui estão as funções que não mudaram
-DashboardPage.prototype.handleLogout = async function() {
-    await supabase.auth.signOut();
-    window.location.href = '/';
-};
-DashboardPage.prototype.handleSaveKnowledge = async function() {
-    const { user, knowledge, setSavingKnowledge, setKnowledgeSaveMessage } = this;
-    if (!user) return;
-    setSavingKnowledge(true);
-    setKnowledgeSaveMessage('');
-    const { error } = await supabase.from('knowledge_base').upsert({ user_id: user.id, content: knowledge }, { onConflict: 'user_id' });
-    if (error) { setKnowledgeSaveMessage('Erro ao salvar.'); console.error('Erro:', error); } else { setKnowledgeSaveMessage('Salvo com sucesso!'); }
-    setSavingKnowledge(false);
-    setTimeout(() => setKnowledgeSaveMessage(''), 2000);
-};
-
-// FINAL DO CÓDIGO ATUALIZADO v4.3 (Versão Final com Polimento)
+// FINAL DO CÓDIGO ATUALIZADO v4.4 (A Versão FINAL e CORRIGIDA)
